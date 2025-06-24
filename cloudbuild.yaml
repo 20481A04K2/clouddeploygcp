@@ -34,7 +34,7 @@ steps:
     id: deploy-apply
     args:
       [
-        "deploy", "apply",
+        "gcloud", "deploy", "apply",
         "--file=clouddeploy.yaml",
         "--region=asia-south1",
         "--project=mythic-beanbag-463309-e9"
