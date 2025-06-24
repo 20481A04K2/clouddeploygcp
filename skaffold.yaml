@@ -1,0 +1,19 @@
+apiVersion: skaffold/v3alpha1
+kind: Config
+metadata:
+  name: cloudrun-canary-app
+
+build:
+  artifacts:
+    - image: asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app
+  tagPolicy:
+    sha256: {}
+
+manifests:
+  rawYaml:
+    - clouddeploy.yaml
+
+deploy:
+  cloudrun:
+    projectId: mythic-beanbag-463309-e9
+    region: asia-south1
