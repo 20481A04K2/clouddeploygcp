@@ -60,7 +60,7 @@ steps:
         gcloud deploy releases create $${BUILD_ID} \
           --delivery-pipeline=cloudrun-canary-pipeline \
           --region=asia-south1 \
-          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$${BUILD_ID} \
+          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest\
           --annotations=clouddeploy.googleapis.com/release-type=image \
           --project=mythic-beanbag-463309-e9
 
