@@ -1,49 +1,46 @@
-apiVersion: deploy.cloud.google.com/v1
-kind: DeliveryPipeline
-metadata:
-  name: cloudrun-canary-pipeline
-description: Canary rollout for Cloud Run
-serialPipeline:
-  stages:
-    - targetId: staging
-      profiles: [canary-50]
-    - targetId: production
-      profiles: [canary-100]
+steps:
+  # Step 1: Build and publish Docker image to Artifact Registry
+  - name: gcr.io/k8s-skaffold/pack
+    entrypoint: pack
+    args:
+      [
+        'build',
+        '--builder=gcr.io/buildpacks/builder',
+        '--publish',
+        'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
+      ]
+    id: Build and publish
 
----
+  # Step 2: Apply Cloud Deploy pipeline and targets
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      [
+        'deploy', 'apply',
+        '--file=clouddeploy.yaml',
+        '--region=asia-south1',
+        '--project=mythic-beanbag-463309-e9'
+      ]
+    id: Apply pipeline
 
-apiVersion: deploy.cloud.google.com/v1
-kind: Target
-metadata:
-  name: staging
-description: Canary rollout stage
-run:
-  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
+  # Step 3: Wait briefly for propagation
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args: ['-c', 'echo "Waiting for Cloud Deploy resources..."; sleep 60']
+    id: Wait
 
----
+  # Step 4: Create a release
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      [
+        'deploy', 'releases', 'create', '${_BUILD_ID}',
+        '--delivery-pipeline', 'cloudrun-canary-pipeline',
+        '--region', 'asia-south1',
+        '--images', 'app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
+        '--project=mythic-beanbag-463309-e9'
+      ]
+    id: Create release
 
-apiVersion: deploy.cloud.google.com/v1
-kind: Target
-metadata:
-  name: production
-description: Final rollout
-run:
-  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
-
----
-
-apiVersion: deploy.cloud.google.com/v1
-kind: SkaffoldConfig
-metadata:
-  name: default
-profiles:
-  - name: canary-50
-    deploy:
-      cloudrun:
-        rollout:
-          percent: 50
-  - name: canary-100
-    deploy:
-      cloudrun:
-        rollout:
-          percent: 100
+substitutions:
+  _BUILD_ID: rel-20240624-001
