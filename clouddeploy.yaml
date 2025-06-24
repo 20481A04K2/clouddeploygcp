@@ -2,31 +2,27 @@ apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
   name: cloudrun-canary-pipeline
-description: Cloud Run pipeline with canary rollout
+description: Canary deployment pipeline for Cloud Run
 serialPipeline:
   stages:
     - targetId: dev
-      strategy:
-        standard:
-          verify: false
+      profiles: [dev]
     - targetId: qa
-      strategy:
-        standard:
-          verify: false
+      profiles: [qa]
     - targetId: prod
+      profiles: [prod]
       strategy:
         canary:
+          percentages: [25, 50, 100]
           runtimeConfig:
             cloudRun:
               automaticTrafficControl: true
-          canaryDeployment:
-            percentages: [50, 100]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
 metadata:
   name: dev
-description: Dev environment
+description: Cloud Run dev environment
 run:
   location: projects/mythic-beanbag-463309-e9/locations/asia-south1
 ---
@@ -34,7 +30,7 @@ apiVersion: deploy.cloud.google.com/v1
 kind: Target
 metadata:
   name: qa
-description: QA environment
+description: Cloud Run QA environment
 run:
   location: projects/mythic-beanbag-463309-e9/locations/asia-south1
 ---
@@ -42,6 +38,6 @@ apiVersion: deploy.cloud.google.com/v1
 kind: Target
 metadata:
   name: prod
-description: Prod environment
+description: Cloud Run prod environment
 run:
   location: projects/mythic-beanbag-463309-e9/locations/asia-south1
