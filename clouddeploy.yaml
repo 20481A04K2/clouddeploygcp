@@ -35,16 +35,9 @@ metadata:
 description: Cloud Run prod environment
 run:
   location: projects/mythic-beanbag-463309-e9/locations/asia-south1
----
-apiVersion: deploy.cloud.google.com/v1
-kind: Rollout
-metadata:
-  name: canary-rollout
-annotations:
-  clouddeploy.googleapis.com/target-id: prod
-strategy:
-  canary:
-    percentages: [25, 50]
-    runtimeConfig:
-      cloudRun:
-        automaticTrafficControl: true
+  rolloutConfig:
+    canary:
+      percentages: [25, 50]
+      runtimeConfig:
+        cloudRun:
+          automaticTrafficControl: true
