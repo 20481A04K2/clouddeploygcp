@@ -61,10 +61,6 @@ steps:
           --annotations=clouddeploy.googleapis.com/release-type=image \
           --project=mythic-beanbag-463309-e9
 
-artifacts:
-  files:
-    - build.env
-
 options:
   logging: CLOUD_LOGGING_ONLY
 
