@@ -1,0 +1,56 @@
+steps:
+# Step 1: Build and publish the image using Buildpacks
+- name: 'gcr.io/k8s-skaffold/pack'
+  entrypoint: 'pack'
+  args:
+    [
+      'build',
+      '--builder=gcr.io/buildpacks/builder',
+      '--publish',
+      'asia-south1-docker.pkg.dev/onyx-antler-459216-j6/my-repo/app:${_BUILD_ID}'
+    ]
+  id: Build and package app
+
+# Step 2: Apply Cloud Deploy pipeline and targets
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+  entrypoint: 'gcloud'
+  args:
+    [
+      "deploy", "apply",
+      "--file=clouddeploy.yaml",
+      "--region=${_REGION}",
+      "--project=onyx-antler-459216-j6"
+    ]
+  id: Apply deploy config
+
+# Step 2.5: Wait for resources to be ready
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      echo "Waiting for Cloud Deploy resources to become available..."
+      sleep 60
+  id: Wait for pipeline propagation
+
+# Step 3: Create release and trigger rollout
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+  entrypoint: 'gcloud'
+  args:
+    [
+      'deploy', 'releases', 'create', '${_BUILD_ID}',
+      '--delivery-pipeline', 'cloudrun-python-pipeline',
+      '--region', '${_REGION}',
+      '--images', 'app=asia-south1-docker.pkg.dev/onyx-antler-459216-j6/my-repo/app:${_BUILD_ID}',
+      '--project=onyx-antler-459216-j6'
+    ]
+  id: Create release
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: asia-south1
+  _BUILD_ID: rel-20240511-011
+
+serviceAccount: 880653953247-compute@developer.gserviceaccount.com
