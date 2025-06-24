@@ -17,7 +17,7 @@ serialPipeline:
       strategy:
         canary:
           canaryDeployment:
-            percentages: [50, 100]
+            percentages: [25, 50, 75]
           runtimeConfig:
             cloudRun:
               automaticTrafficControl: true
