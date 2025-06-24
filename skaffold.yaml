@@ -12,6 +12,7 @@ build:
 manifests:
   rawYaml:
     - clouddeploy.yaml
+    - deploy.yaml  # ✅ Add this line
 
 deploy:
   cloudrun:
