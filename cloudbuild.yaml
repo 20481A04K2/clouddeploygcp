@@ -9,6 +9,8 @@ steps:
         '--publish',
         'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
       ]
+    env:
+      - 'GOOGLE_ENTRYPOINT=python app.py'
     id: Build and package app
 
   # Step 2: Apply Cloud Deploy pipeline and targets
@@ -53,5 +55,4 @@ substitutions:
   _REGION: asia-south1
   _BUILD_ID: rel-20240624-001
 
-# ✅ Update this with the correct project number
 serviceAccount: 956387703564-compute@developer.gserviceaccount.com
