@@ -41,7 +41,7 @@ steps:
         '--delivery-pipeline', 'cloudrun-canary-pipeline',
         '--region', '${_REGION}',
         '--images', 'app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
-        '--annotations=clouddeploy.googleapis.com/release-type=delivery-pipeline-based',
+        '--annotations=clouddeploy.googleapis.com/release-type=image',
         '--project=mythic-beanbag-463309-e9'
       ]
 
