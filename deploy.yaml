@@ -1,0 +1,12 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: my-cloudrun-app
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - image: asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest
+          ports:
+            - containerPort: 8080
