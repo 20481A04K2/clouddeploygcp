@@ -16,27 +16,23 @@ steps:
         'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
       ]
 
-  # Step 3: Apply Cloud Deploy pipeline and targets
+  # Step 3: Apply Cloud Deploy resources
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     entrypoint: 'gcloud'
     args:
       [
-        'deploy', 'apply',
-        '--file=clouddeploy.yaml',
-        '--region=${_REGION}',
-        '--project=mythic-beanbag-463309-e9'
+        "deploy", "apply",
+        "--file=clouddeploy.yaml",
+        "--region=${_REGION}",
+        "--project=mythic-beanbag-463309-e9"
       ]
 
   # Step 4: Wait for propagation
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     entrypoint: 'bash'
-    args:
-      - -c
-      - |
-        echo "Waiting for Cloud Deploy resources to become available..."
-        sleep 60
+    args: ['-c', 'echo "Waiting for Cloud Deploy resources to propagate..."; sleep 60']
 
-  # Step 5: Create release and trigger deployment
+  # Step 5: Create release and trigger rollout
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     entrypoint: 'gcloud'
     args:
@@ -48,12 +44,11 @@ steps:
         '--project=mythic-beanbag-463309-e9'
       ]
 
-options:
-  logging: CLOUD_LOGGING_ONLY
-
 substitutions:
   _REGION: asia-south1
   _BUILD_ID: rel-20240624-001
 
-# Make sure this service account has Cloud Deploy + Artifact Registry + Cloud Run permissions
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 serviceAccount: 956387703564-compute@developer.gserviceaccount.com
