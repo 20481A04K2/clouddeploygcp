@@ -1,0 +1,49 @@
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: cloudrun-canary-pipeline
+description: Canary rollout for Cloud Run
+serialPipeline:
+  stages:
+    - targetId: staging
+      profiles: [canary-50]
+    - targetId: production
+      profiles: [canary-100]
+
+---
+
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: staging
+description: Canary rollout stage
+run:
+  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
+
+---
+
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: production
+description: Final rollout
+run:
+  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
+
+---
+
+apiVersion: deploy.cloud.google.com/v1
+kind: SkaffoldConfig
+metadata:
+  name: default
+profiles:
+  - name: canary-50
+    deploy:
+      cloudrun:
+        rollout:
+          percent: 50
+  - name: canary-100
+    deploy:
+      cloudrun:
+        rollout:
+          percent: 100
