@@ -1,53 +1,74 @@
 steps:
+  # Step 0: Generate dynamic BUILD_ID (e.g., rel-20240624-141530)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: generate-build-id
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        BUILD_ID="rel-$(date -u +%Y%m%d-%H%M%S)"
+        echo "Generated BUILD_ID=$BUILD_ID"
+        echo "BUILD_ID=$BUILD_ID" > build.env
+
   # Step 1: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
+    id: docker-build
+    env:
+      - '$(cat build.env)'
     args:
       [
         'build',
-        '-t', 'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
+        '-t', 'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$BUILD_ID',
         '.'
       ]
 
   # Step 2: Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
+    id: docker-push
+    env:
+      - '$(cat build.env)'
     args:
       [
         'push',
-        'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
+        'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$BUILD_ID'
       ]
 
   # Step 3: Apply Cloud Deploy resources
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: clouddeploy-apply
+    env:
+      - '$(cat build.env)'
     entrypoint: 'gcloud'
     args:
       [
         "deploy", "apply",
         "--file=clouddeploy.yaml",
-        "--region=${_REGION}",
+        "--region=asia-south1",
         "--project=mythic-beanbag-463309-e9"
       ]
 
   # Step 4: Wait for propagation
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: wait
     entrypoint: 'bash'
     args: ['-c', 'echo "Waiting for Cloud Deploy resources to propagate..."; sleep 60']
 
   # Step 5: Create release and trigger rollout
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-    entrypoint: 'gcloud'
+    id: create-release
+    env:
+      - '$(cat build.env)'
+    entrypoint: 'bash'
     args:
-      [
-        'deploy', 'releases', 'create', '${_BUILD_ID}',
-        '--delivery-pipeline', 'cloudrun-canary-pipeline',
-        '--region', '${_REGION}',
-        '--images', 'app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
-        '--annotations=clouddeploy.googleapis.com/release-type=image',
-        '--project=mythic-beanbag-463309-e9'
-      ]
-
-substitutions:
-  _REGION: asia-south1
-  _BUILD_ID: rel-20240624-001
+      - -c
+      - |
+        source build.env
+        gcloud deploy releases create "$BUILD_ID" \
+          --delivery-pipeline=cloudrun-canary-pipeline \
+          --region=asia-south1 \
+          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$BUILD_ID \
+          --annotations=clouddeploy.googleapis.com/release-type=image \
+          --project=mythic-beanbag-463309-e9
 
 options:
   logging: CLOUD_LOGGING_ONLY
