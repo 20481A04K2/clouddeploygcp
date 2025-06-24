@@ -1,46 +1,47 @@
-steps:
-  # Step 1: Build and publish Docker image to Artifact Registry
-  - name: gcr.io/k8s-skaffold/pack
-    entrypoint: pack
-    args:
-      [
-        'build',
-        '--builder=gcr.io/buildpacks/builder',
-        '--publish',
-        'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
-      ]
-    id: Build and publish
-
-  # Step 2: Apply Cloud Deploy pipeline and targets
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
-    args:
-      [
-        'deploy', 'apply',
-        '--file=clouddeploy.yaml',
-        '--region=asia-south1',
-        '--project=mythic-beanbag-463309-e9'
-      ]
-    id: Apply pipeline
-
-  # Step 3: Wait briefly for propagation
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: bash
-    args: ['-c', 'echo "Waiting for Cloud Deploy resources..."; sleep 60']
-    id: Wait
-
-  # Step 4: Create a release
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
-    args:
-      [
-        'deploy', 'releases', 'create', '${_BUILD_ID}',
-        '--delivery-pipeline', 'cloudrun-canary-pipeline',
-        '--region', 'asia-south1',
-        '--images', 'app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
-        '--project=mythic-beanbag-463309-e9'
-      ]
-    id: Create release
-
-substitutions:
-  _BUILD_ID: rel-20240624-001
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: cloudrun-canary-pipeline
+description: Cloud Run pipeline with canary rollout
+serialPipeline:
+  stages:
+    - targetId: dev
+      strategy:
+        standard:
+          verify: false
+    - targetId: qa
+      strategy:
+        standard:
+          verify: false
+    - targetId: prod
+      strategy:
+        canary:
+          runtimeConfig:
+            cloudRun:
+              automaticTrafficControl: true
+          percentages: [50, 100]
+          verify: false
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: dev
+description: Dev environment
+run:
+  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: qa
+description: QA environment
+run:
+  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: prod
+description: Prod environment
+run:
+  location: projects/mythic-beanbag-463309-e9/locations/asia-south1
