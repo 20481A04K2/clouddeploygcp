@@ -9,7 +9,7 @@ steps:
         BUILD_ID="rel-$(date -u +%Y%m%d-%H%M%S)"
         echo "BUILD_ID=$BUILD_ID" > build.env
 
-  # Step 1: Build Docker image
+  # Step 1: Build Docker image and tag with both BUILD_ID and latest
   - name: 'gcr.io/cloud-builders/docker'
     id: docker-build
     entrypoint: 'bash'
@@ -17,9 +17,10 @@ steps:
       - -c
       - |
         source build.env
-        docker build -t asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$${BUILD_ID} .
+        IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
+        docker build -t $$IMAGE_BASE:$$BUILD_ID -t $$IMAGE_BASE:latest .
 
-  # Step 2: Push Docker image
+  # Step 2: Push both BUILD_ID and latest image tags
   - name: 'gcr.io/cloud-builders/docker'
     id: docker-push
     entrypoint: 'bash'
@@ -27,9 +28,11 @@ steps:
       - -c
       - |
         source build.env
-        docker push asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:$${BUILD_ID}
+        IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
+        docker push $$IMAGE_BASE:$$BUILD_ID
+        docker push $$IMAGE_BASE:latest
 
-  # Step 3: Apply Cloud Deploy pipeline & targets from clouddeploy.yaml
+  # Step 3: Apply Cloud Deploy resources (pipeline and targets)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     id: deploy-apply
     args:
@@ -40,7 +43,7 @@ steps:
         "--project=mythic-beanbag-463309-e9"
       ]
 
-  # Step 4: Wait before triggering release
+  # Step 4: Wait for propagation
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     id: wait
     entrypoint: 'bash'
@@ -49,7 +52,7 @@ steps:
       - |
         echo "Waiting for Cloud Deploy resources to propagate..."; sleep 60
 
-  # Step 5: Create Cloud Deploy release dynamically
+  # Step 5: Create release using the latest image tag
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
     id: create-release
     entrypoint: 'bash'
@@ -57,10 +60,10 @@ steps:
       - -c
       - |
         source build.env
-        gcloud deploy releases create $${BUILD_ID} \
+        gcloud deploy releases create $$BUILD_ID \
           --delivery-pipeline=cloudrun-canary-pipeline \
           --region=asia-south1 \
-          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest\
+          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest \
           --annotations=clouddeploy.googleapis.com/release-type=image \
           --project=mythic-beanbag-463309-e9
 
