@@ -1,73 +1,56 @@
 steps:
-  # Step 0: Generate dynamic BUILD_ID using UTC timestamp
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: generate-build-id
-    entrypoint: 'bash'
-    args:
-      - -c
-      - |
-        BUILD_ID="rel-$(date -u +%Y%m%d-%H%M%S)"
-        echo "BUILD_ID=$BUILD_ID" > build.env
-
-  # Step 1: Build Docker image and tag with both BUILD_ID and latest
+  # Step 1: Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    id: docker-build
-    entrypoint: 'bash'
-    args:
-      - -c
-      - |
-        source build.env
-        IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
-        docker build -t "$$IMAGE_BASE:$$BUILD_ID" -t "$$IMAGE_BASE:latest" .
-
-  # Step 2: Push both BUILD_ID and latest image tags
-  - name: 'gcr.io/cloud-builders/docker'
-    id: docker-push
-    entrypoint: 'bash'
-    args:
-      - -c
-      - |
-        source build.env
-        IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
-        docker push "$$IMAGE_BASE:$$BUILD_ID"
-        docker push "$$IMAGE_BASE:latest"
-
-  # Step 3: Apply Cloud Deploy resources (pipeline and targets)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-    id: deploy-apply
     args:
       [
-        "gcloud", "deploy", "apply",
+        'build',
+        '-t', 'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
+        '.'
+      ]
+
+  # Step 2: Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}'
+      ]
+
+  # Step 3: Apply Cloud Deploy resources
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    entrypoint: 'gcloud'
+    args:
+      [
+        "deploy", "apply",
         "--file=clouddeploy.yaml",
-        "--region=asia-south1",
+        "--region=${_REGION}",
         "--project=mythic-beanbag-463309-e9"
       ]
 
   # Step 4: Wait for propagation
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-    id: wait
     entrypoint: 'bash'
-    args:
-      - -c
-      - |
-        echo "Waiting for Cloud Deploy resources to propagate..."; sleep 60
+    args: ['-c', 'echo "Waiting for Cloud Deploy resources to propagate..."; sleep 60']
 
-  # Step 5: Create release using the latest image tag
+  # Step 5: Create release and trigger rollout
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-    id: create-release
-    entrypoint: 'bash'
+    entrypoint: 'gcloud'
     args:
-      - -c
-      - |
-        source build.env
-        gcloud deploy releases create "$$BUILD_ID" \
-          --delivery-pipeline=cloudrun-canary-pipeline \
-          --region=asia-south1 \
-          --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest \
-          --annotations=clouddeploy.googleapis.com/release-type=image \
-          --project=mythic-beanbag-463309-e9
+      [
+        'deploy', 'releases', 'create', '${_BUILD_ID}',
+        '--delivery-pipeline', 'cloudrun-canary-pipeline',
+        '--region', '${_REGION}',
+        '--images', 'app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:${_BUILD_ID}',
+        '--annotations=clouddeploy.googleapis.com/release-type=image',
+        '--project=mythic-beanbag-463309-e9'
+      ]
+
+substitutions:
+  _REGION: asia-south1
+  _BUILD_ID: rel-20240624-002
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
 serviceAccount: 956387703564-compute@developer.gserviceaccount.com
+
