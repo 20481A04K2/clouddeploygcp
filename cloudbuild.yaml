@@ -18,7 +18,7 @@ steps:
       - |
         source build.env
         IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
-        docker build -t $$IMAGE_BASE:$$BUILD_ID -t $$IMAGE_BASE:latest .
+        docker build -t "$$IMAGE_BASE:$$BUILD_ID" -t "$$IMAGE_BASE:latest" .
 
   # Step 2: Push both BUILD_ID and latest image tags
   - name: 'gcr.io/cloud-builders/docker'
@@ -29,8 +29,8 @@ steps:
       - |
         source build.env
         IMAGE_BASE="asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app"
-        docker push $$IMAGE_BASE:$$BUILD_ID
-        docker push $$IMAGE_BASE:latest
+        docker push "$$IMAGE_BASE:$$BUILD_ID"
+        docker push "$$IMAGE_BASE:latest"
 
   # Step 3: Apply Cloud Deploy resources (pipeline and targets)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
@@ -60,7 +60,7 @@ steps:
       - -c
       - |
         source build.env
-        gcloud deploy releases create $$BUILD_ID \
+        gcloud deploy releases create "$$BUILD_ID" \
           --delivery-pipeline=cloudrun-canary-pipeline \
           --region=asia-south1 \
           --images=app=asia-south1-docker.pkg.dev/mythic-beanbag-463309-e9/my-repo/app:latest \
