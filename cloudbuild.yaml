@@ -47,7 +47,7 @@ steps:
 
 substitutions:
   _REGION: asia-south1
-  _BUILD_ID: rel-20240624-002
+  _BUILD_ID: rel-20240624-003
 
 options:
   logging: CLOUD_LOGGING_ONLY
